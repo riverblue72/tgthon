@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_blue/flutter_blue.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,62 +11,83 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bluetooth RFID Reader',
+      title: 'QR Code Scanner',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
-      home: const BluetoothPage(),
+      home: const QRViewExample(),
     );
   }
 }
 
-class BluetoothPage extends StatefulWidget {
-  const BluetoothPage({super.key});
+class QRViewExample extends StatefulWidget {
+  const QRViewExample({super.key});
 
   @override
-  _BluetoothPageState createState() => _BluetoothPageState();
+  _QRViewExampleState createState() => _QRViewExampleState();
 }
 
-class _BluetoothPageState extends State<BluetoothPage> {
-  FlutterBlue flutterBlue = FlutterBlue.instance;
-  List<BluetoothDevice> devicesList = [];
+class _QRViewExampleState extends State<QRViewExample> {
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? controller;
+  final String authorizedQrCode = "AUTHORIZED_QR_CODE"; // 지정된 QR 코드 값
 
   @override
-  void initState() {
-    super.initState();
-    // Bluetooth 장치 검색 시작
-    flutterBlue.scan().listen((scanResult) {
-      setState(() {
-        if (!devicesList.contains(scanResult.device)) {
-          devicesList.add(scanResult.device);
-        }
-      });
-    });
+  void reassemble() {
+    super.reassemble();
+    if (Platform.isAndroid) {
+      controller?.pauseCamera();
+    } else if (Platform.isIOS) {
+      controller?.resumeCamera();
+    }
   }
 
-  void connectToDevice(BluetoothDevice device) async {
-    await device.connect();
-    // RFID 카드 읽기 로직 추가
+  void _onQRViewCreated(QRViewController controller) {
+    this.controller = controller;
+    controller.scannedDataStream.listen((scanData) {
+      final String scannedData = scanData.code ?? "";
+      if (scannedData == authorizedQrCode) {
+        // 인증 성공
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => HomePage()));
+      } else {
+        // 인증 실패 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('인증되지 않은 QR 코드입니다.')),
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bluetooth RFID Reader'),
+        title: const Text('QR Code Scanner'),
       ),
-      body: ListView.builder(
-        itemCount: devicesList.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(devicesList[index].name.isNotEmpty
-                ? devicesList[index].name
-                : 'Unknown device'),
-            subtitle: Text(devicesList[index].id.toString()),
-            onTap: () => connectToDevice(devicesList[index]),
-          );
-        },
+      body: QRView(
+        key: qrKey,
+        onQRViewCreated: _onQRViewCreated,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+}
+
+class HomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Home Page"),
+      ),
+      body: const Center(
+        child: Text("인증된 사용자만 접근 가능합니다."),
       ),
     );
   }
