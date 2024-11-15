@@ -1,3 +1,4 @@
+import 'dart:io'; // 필요한 import 추가
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
@@ -49,7 +50,9 @@ class _QRViewExampleState extends State<QRViewExample> {
       if (scannedData == authorizedQrCode) {
         // 인증 성공
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => HomePage()));
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
       } else {
         // 인증 실패 메시지
         ScaffoldMessenger.of(context).showSnackBar(
