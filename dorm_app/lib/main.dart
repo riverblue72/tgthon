@@ -5,11 +5,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
+
   // Authentication 초기화 및 디버깅
   if (FirebaseAuth.instance.currentUser == null) {
     await FirebaseAuth.instance.signInAnonymously();
@@ -71,12 +70,14 @@ class WelcomeScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const QRViewExample()),
+                    MaterialPageRoute(
+                        builder: (context) => const QRViewExample()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: BorderSide(color: Colors.black, width: 2),
@@ -84,7 +85,10 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 child: const Text(
                   '인증하기',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
               ),
             ),
@@ -94,7 +98,6 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 }
-
 
 class QRViewExample extends StatefulWidget {
   const QRViewExample({super.key});
@@ -156,18 +159,17 @@ class _QRViewExampleState extends State<QRViewExample> {
       );
     }
 
-
-  // 실제 QR 스캐너 UI
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('QR Code Scanner'),
-    ),
-    body: QRView(
-      key: qrKey,
-      onQRViewCreated: _onQRViewCreated,
-    ),
-  );
-}
+    // 실제 QR 스캐너 UI
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('QR Code Scanner'),
+      ),
+      body: QRView(
+        key: qrKey,
+        onQRViewCreated: _onQRViewCreated,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -267,23 +269,29 @@ class MarketPage extends StatelessWidget {
             final currentUserId = FirebaseAuth.instance.currentUser!.uid;
             final authorId = item['authorId'];
 
-            return ListTile(
-              title: Text(item['title']),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailPage(
-                      isTipsPage: false,
-                      docId: item.id,
-                      title: item['title'],
-                      content: item['content'],
-                      isPinned: item['isPinned'] ?? false,
-                      authorId: authorId,
-                    ),
-                  ),
-                );
-              },
+            return Column(
+              children: [
+                ListTile(
+                  // ListTile만 사용
+                  title: Text(item['title']),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailPage(
+                          isTipsPage: false,
+                          docId: item.id,
+                          title: item['title'],
+                          content: item['content'],
+                          isPinned: item['isPinned'] ?? false,
+                          authorId: authorId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(), // 항목 사이에 분리선 추가
+              ],
             );
           },
         );
@@ -316,33 +324,42 @@ class TipsPage extends StatelessWidget {
             final currentUserId = FirebaseAuth.instance.currentUser!.uid;
             final bool isPinned = item['isPinned'] ?? false;
 
-            return ListTile(
-              title: Row(
-                children: [
-                  if (isPinned) // 고정글이면 이모지 추가
-                    const Text(
-                      '📌',
-                      style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  const SizedBox(width: 5), // 간격 추가
-                  Text(item['title']),
-                ],
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailPage(
-                      isTipsPage: true,
-                      docId: item.id,
-                      title: item['title'],
-                      content: item['content'],
-                      isPinned: item['isPinned'],
-                      authorId: item['authorId'],
-                    ),
+            return Column(
+              children: [
+                ListTile(
+                  // ListTile만 사용
+                  title: Row(
+                    children: [
+                      if (isPinned) // 고정글이면 이모지 추가
+                        const Text(
+                          '📌',
+                          style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      const SizedBox(width: 5), // 간격 추가
+                      Text(item['title']),
+                    ],
                   ),
-                );
-              },
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailPage(
+                          isTipsPage: true,
+                          docId: item.id,
+                          title: item['title'],
+                          content: item['content'],
+                          isPinned: item['isPinned'],
+                          authorId: item['authorId'],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(), // 항목 사이에 분리선 추가
+              ],
             );
           },
         );
@@ -389,7 +406,10 @@ class DetailPage extends StatelessWidget {
             if (isPinned)
               const Text(
                 '📌 고정글',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red),
               ),
             const SizedBox(height: 8),
             Text(
@@ -427,7 +447,8 @@ class DetailPage extends StatelessWidget {
                       Navigator.pop(context);
                     },
                     child: const Text("삭제"),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   ),
                 ],
               ),
@@ -492,12 +513,15 @@ class _WritePostPageState extends State<WritePostPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green, // 버튼 배경색
-              foregroundColor: Colors.white, // 버튼 텍스트 색
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                backgroundColor: Colors.green, // 버튼 배경색
+                foregroundColor: Colors.white, // 버튼 텍스트 색
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               onPressed: () async {
-                await FirebaseFirestore.instance.collection(widget.isTipsPage ? 'tips' : 'market').add({
+                await FirebaseFirestore.instance
+                    .collection(widget.isTipsPage ? 'tips' : 'market')
+                    .add({
                   'title': titleController.text,
                   'content': contentController.text,
                   'isPinned': isPinned,
