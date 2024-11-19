@@ -406,15 +406,13 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    print("현재 사용자 UID: $currentUserId");
-    print("글 작성자 UID: $authorId");
-    print("수정/삭제 버튼 조건: ${currentUserId == authorId}");
 
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        // Scrollable 위젯으로 변경
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +430,7 @@ class DetailPage extends StatelessWidget {
               content,
               style: const TextStyle(fontSize: 16),
             ),
-            const Spacer(),
+            const SizedBox(height: 20),
             if (currentUserId == authorId)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
