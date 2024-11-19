@@ -42,6 +42,11 @@ class MyApp extends StatelessWidget {
             900: Color(0xFFB71C1C),
           },
         ),
+        scaffoldBackgroundColor: Colors.white, // 배경색을 흰색으로 설정
+        appBarTheme: AppBarTheme(
+          backgroundColor: const Color.fromARGB(255, 241, 100, 90)
+              .withOpacity(0.3), // 연한 빨강색으로 설정
+        ),
       ),
       home: const WelcomeScreen(),
     );
@@ -178,7 +183,6 @@ class _QRViewExampleState extends State<QRViewExample> {
   }
 }
 
-// 메인 게시판 화면
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
@@ -211,7 +215,7 @@ class _MainPageState extends State<MainPage> {
         title: Text(_selectedIndex == 0 ? '중고거래 게시판' : '팁 게시판'),
       ),
       body: _pages[_selectedIndex],
-      floatingActionButton: FirebaseAuth.instance.currentUser!.uid == 'ADMIN_ID'
+      floatingActionButton: currentUserId == 'ADMIN_ID'
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
@@ -226,20 +230,32 @@ class _MainPageState extends State<MainPage> {
               child: const Icon(Icons.add),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: '중고거래',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(
+            height: 1,
+            thickness: 1,
+            color: Color(0x19000000), // 연한 검은색의 분리선
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb),
-            label: '팁 게시판',
+          BottomNavigationBar(
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_cart),
+                label: '중고거래',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.lightbulb),
+                label: '팁 게시판',
+              ),
+            ],
+            currentIndex: _selectedIndex,
+            selectedItemColor: Color.fromARGB(255, 241, 100, 90), // 선택된 색상
+            unselectedItemColor: Colors.black, // 선택되지 않은 색상
+            backgroundColor: Colors.white, // 하단바 배경색을 흰색으로 설정
+            onTap: _onItemTapped,
           ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        onTap: _onItemTapped,
       ),
     );
   }
