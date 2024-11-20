@@ -8,15 +8,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
-  // Authentication 초기화 및 디버깅
-  if (FirebaseAuth.instance.currentUser == null) {
-    await FirebaseAuth.instance.signInAnonymously();
-    print("익명 로그인 성공: ${FirebaseAuth.instance.currentUser!.uid}");
-  } else {
-    print("이미 로그인된 사용자: ${FirebaseAuth.instance.currentUser!.uid}");
-  }
+  print('Firebase 초기화 성공!');
+  // Firestore 데이터 업데이트 호출
+  await getDocumentId(); // 함수 호출
+  // Firestore 데이터 테스트 호출
   runApp(const MyApp());
+}
+
+Future<void> getDocumentId() async {
+  final querySnapshot =
+      await FirebaseFirestore.instance.collection('users').get();
+  for (var doc in querySnapshot.docs) {
+    print('문서 ID: ${doc.id}');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -155,10 +159,10 @@ class _QRViewExampleState extends State<QRViewExample> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MainPage()),
+                MaterialPageRoute(builder: (context) => RegisterPage()),
               );
             },
-            child: const Text('게시판으로 이동'),
+            child: const Text('회원가입으로 이동'),
           ),
         ),
       );
@@ -180,6 +184,102 @@ class _QRViewExampleState extends State<QRViewExample> {
   void dispose() {
     controller?.dispose();
     super.dispose();
+  }
+}
+
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
+  @override
+  _RegisterPageState createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final TextEditingController nicknameController = TextEditingController();
+  final TextEditingController roomNumberController = TextEditingController();
+
+  /// Firestore에서 닉네임과 방번호를 검증하는 함수
+  Future<bool> verifyUser(String nickname, String roomNumber) async {
+    try {
+      // Firestore에서 지정된 문서 읽기
+      final docSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc('iyXGKYZkEeUxSsayjwCn') // Document ID
+          .get();
+
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        final user1 = data?['user1'];
+        final user2 = data?['user2'];
+
+        // 입력된 닉네임과 방번호가 user1 또는 user2와 일치하는지 확인
+        if ((user1['nickName'] == nickname &&
+                user1['roomNumber'] == roomNumber) ||
+            (user2['nickName'] == nickname &&
+                user2['roomNumber'] == roomNumber)) {
+          return true;
+        }
+      }
+    } catch (e) {
+      print('Firestore 오류: $e');
+    }
+    return false; // 인증 실패
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('회원가입')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '회원가입',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: nicknameController,
+              decoration: const InputDecoration(labelText: '닉네임'),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: roomNumberController,
+              decoration: const InputDecoration(labelText: '방번호'),
+            ),
+            const SizedBox(height: 40),
+            Center(
+              child: ElevatedButton(
+                onPressed: () async {
+                  final nickname = nicknameController.text.trim();
+                  final roomNumber = roomNumberController.text.trim();
+
+                  // Firestore 데이터와 검증
+                  final isVerified = await verifyUser(nickname, roomNumber);
+
+                  if (isVerified) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('회원가입 성공!')),
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MainPage()),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('닉네임 또는 방번호가 올바르지 않습니다.')),
+                    );
+                  }
+                },
+                child: const Text('인증하기'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -207,8 +307,6 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    print("현재 사용자 UID: $currentUserId");
-    print("FloatingActionButton 조건: ${currentUserId == 'ADMIN_ID'}");
 
     return Scaffold(
       appBar: AppBar(
@@ -267,51 +365,72 @@ class MarketPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('market')
-          .orderBy('timestamp', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final items = snapshot.data!.docs;
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('market')
+            .orderBy('timestamp', descending: true)
+            .limit(5)
+            .snapshots(),
+        builder: (context, snapshot) {
+          // 로딩 상태
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        return ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-            final authorId = item['authorId'];
+          // 데이터가 없을 때
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('게시글이 없습니다.'));
+          }
+          final items = snapshot.data!.docs;
 
-            return Column(
-              children: [
-                ListTile(
-                  // ListTile만 사용
-                  title: Text(item['title']),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailPage(
-                          isTipsPage: false,
-                          docId: item.id,
-                          title: item['title'],
-                          content: item['content'],
-                          isPinned: item['isPinned'] ?? false,
-                          authorId: authorId,
+          return ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+              final authorId = item['authorId'];
+
+              return Column(
+                children: [
+                  ListTile(
+                    // ListTile만 사용
+                    title: Text(item['title']),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailPage(
+                            isTipsPage: false,
+                            docId: item.id,
+                            title: item['title'],
+                            content: item['content'],
+                            isPinned: item['isPinned'] ?? false,
+                            authorId: authorId,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(), // 항목 사이에 분리선 추가
-              ],
-            );
-          },
-        );
-      },
+                      );
+                    },
+                  ),
+                  const Divider(), // 항목 사이에 분리선 추가
+                ],
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // 글쓰기 페이지로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const WritePostPage(isTipsPage: false),
+            ),
+          );
+        },
+        child: const Icon(Icons.edit), // 연필 모양 아이콘
+      ),
     );
   }
 }
@@ -322,64 +441,88 @@ class TipsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('tips')
-          .orderBy('timestamp', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tips')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(child: Text('오류 발생!'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('게시글이 없습니다.'));
+          }
+          /*
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
-        }
-        final items = snapshot.data!.docs;
+        }*/
+          final items = snapshot.data!.docs;
 
-        return ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-            final bool isPinned = item['isPinned'] ?? false;
+          return ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+              final bool isPinned = item['isPinned'] ?? false;
 
-            return Column(
-              children: [
-                ListTile(
-                  // ListTile만 사용
-                  title: Row(
-                    children: [
-                      if (isPinned) // 고정글이면 이모지 추가
-                        const Text(
-                          '📌',
-                          style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
+              return Column(
+                children: [
+                  ListTile(
+                    // ListTile만 사용
+                    title: Row(
+                      children: [
+                        if (isPinned) // 고정글이면 이모지 추가
+                          const Text(
+                            '📌',
+                            style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        const SizedBox(width: 5), // 간격 추가
+                        Text(item['title']),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailPage(
+                            isTipsPage: true,
+                            docId: item.id,
+                            title: item['title'],
+                            content: item['content'],
+                            isPinned: item['isPinned'],
+                            authorId: item['authorId'],
+                          ),
                         ),
-                      const SizedBox(width: 5), // 간격 추가
-                      Text(item['title']),
-                    ],
+                      );
+                    },
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DetailPage(
-                          isTipsPage: true,
-                          docId: item.id,
-                          title: item['title'],
-                          content: item['content'],
-                          isPinned: item['isPinned'],
-                          authorId: item['authorId'],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(), // 항목 사이에 분리선 추가
-              ],
-            );
-          },
-        );
-      },
+                  const Divider(), // 항목 사이에 분리선 추가
+                ],
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // 글쓰기 페이지로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const WritePostPage(isTipsPage: true),
+            ),
+          );
+        },
+        child: const Icon(Icons.edit), // 연필 모양 아이콘
+      ),
     );
   }
 }
@@ -466,10 +609,52 @@ class DetailPage extends StatelessWidget {
                   ),
                 ],
               ),
+
+            const SizedBox(height: 20),
+            // 중고거래 게시판에서만 채팅 버튼 표시
+            if (!isTipsPage)
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final chatId =
+                      _generateChatId(docId, currentUserId!, authorId);
+
+                  // Firestore에 채팅방 생성 (이미 존재하면 덮어쓰기 없음)
+                  await FirebaseFirestore.instance
+                      .collection('chats')
+                      .doc(chatId)
+                      .set({
+                    'postId': docId,
+                    'userIds': [currentUserId, authorId],
+                    'lastMessage': '',
+                    'timestamp': FieldValue.serverTimestamp(),
+                  });
+
+                  // 채팅 페이지로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatPage(
+                        chatId: chatId,
+                        currentUserId: currentUserId,
+                        otherUserId: authorId,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat),
+                label: const Text("채팅하기"),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  // 고유 chatId 생성
+  String _generateChatId(String docId, String userId1, String userId2) {
+    final ids = [docId, userId1, userId2];
+    ids.sort();
+    return ids.join('_');
   }
 }
 
@@ -487,11 +672,9 @@ class _WritePostPageState extends State<WritePostPage> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
   bool isPinned = false;
-
   @override
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isTipsPage ? '팁 작성' : '중고거래 글쓰기'),
@@ -610,5 +793,134 @@ class EditPostPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class ChatPage extends StatefulWidget {
+  final String chatId;
+  final String currentUserId;
+  final String otherUserId;
+
+  const ChatPage({
+    super.key,
+    required this.chatId,
+    required this.currentUserId,
+    required this.otherUserId,
+  });
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final TextEditingController _messageController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('채팅 - ${widget.otherUserId}'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(widget.chatId)
+                  .collection('messages')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('메시지가 없습니다.'));
+                }
+
+                final messages = snapshot.data!.docs;
+
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final isMine = message['senderId'] == widget.currentUserId;
+
+                    return Align(
+                      alignment:
+                          isMine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              isMine ? Colors.blueAccent : Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          message['content'],
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: '메시지를 입력하세요',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    final message = {
+      'senderId': widget.currentUserId,
+      'content': _messageController.text.trim(),
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages')
+        .add(message);
+
+    // 채팅방 메타데이터 업데이트
+    await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .update({
+      'lastMessage': message['content'],
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _messageController.clear();
   }
 }
