@@ -4,6 +4,8 @@ import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async'; // 이 import 추가
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,6 +121,10 @@ class _QRViewExampleState extends State<QRViewExample> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
 
+  bool isSimulator = (const bool.fromEnvironment('dart.vm.product') ==
+      false); // Simulated environment
+  final TextEditingController qrInputController = TextEditingController();
+
   @override
   void reassemble() {
     super.reassemble();
@@ -133,10 +139,11 @@ class _QRViewExampleState extends State<QRViewExample> {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) {
       final String scannedData = scanData.code ?? "";
-      if (scannedData == "AUTHORIZED_QR_CODE") {
+      if (scannedData == "여 제2기숙사") {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const MainPage()),
+          MaterialPageRoute(
+              builder: (context) => const RegisterPage()), // 회원가입 화면으로 이동
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,21 +155,40 @@ class _QRViewExampleState extends State<QRViewExample> {
 
   @override
   Widget build(BuildContext context) {
-    bool isSimulator = true;
     if (isSimulator) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('QR Code Scanner (시뮬레이터 모드)'),
+          title: const Text('QR 코드 입력'),
         ),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => RegisterPage()),
-              );
-            },
-            child: const Text('회원가입으로 이동'),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                controller: qrInputController,
+                decoration: const InputDecoration(
+                  labelText: 'QR 코드 입력',
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  if (qrInputController.text.trim() == "여 제2기숙사") {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const RegisterPage()), // 회원가입 화면으로 이동
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('인증되지 않은 QR 코드입니다.')),
+                    );
+                  }
+                },
+                child: const Text('인증하기'),
+              ),
+            ],
           ),
         ),
       );
@@ -183,6 +209,7 @@ class _QRViewExampleState extends State<QRViewExample> {
   @override
   void dispose() {
     controller?.dispose();
+    qrInputController.dispose();
     super.dispose();
   }
 }
@@ -296,6 +323,7 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = const [
     MarketPage(),
     TipsPage(),
+    ChatListPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -310,24 +338,30 @@ class _MainPageState extends State<MainPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedIndex == 0 ? '중고거래 게시판' : '팁 게시판'),
+        title: Text(
+          _selectedIndex == 0
+              ? '중고거래 게판'
+              : _selectedIndex == 1
+                  ? '팁 게시판'
+                  : '채팅', // 채팅 페이지 제목
+        ),
       ),
-      body: _pages[_selectedIndex],
-      floatingActionButton: currentUserId == 'ADMIN_ID'
+      body: _pages[_selectedIndex], // 선택된 페이지 렌더링
+      floatingActionButton: (_selectedIndex != 2 && currentUserId == 'ADMIN_ID')
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => WritePostPage(
-                      isTipsPage: _selectedIndex == 1,
+                      isTipsPage: _selectedIndex == 1, // 팁 게시판 여부 전달
                     ),
                   ),
                 );
               },
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.add), // 글쓰기 버튼
             )
-          : null,
+          : null, // 채팅 페이지에서는 글쓰기 버튼 없음
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -345,6 +379,10 @@ class _MainPageState extends State<MainPage> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.lightbulb),
                 label: '팁 게시판',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.chat), // 채팅 아이콘
+                label: '채팅',
               ),
             ],
             currentIndex: _selectedIndex,
@@ -421,7 +459,7 @@ class MarketPage extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // 글쓰기 페이지로 이동
+          // 글기 페이지로 이동
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -612,49 +650,222 @@ class DetailPage extends StatelessWidget {
 
             const SizedBox(height: 20),
             // 중고거래 게시판에서만 채팅 버튼 표시
-            if (!isTipsPage)
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final chatId =
-                      _generateChatId(docId, currentUserId!, authorId);
+            if (!isTipsPage &&
+                currentUserId != null &&
+                currentUserId != authorId)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    // 두 사용자 ID를 정렬하여 일관된 채팅방 ID 생성
+                    List<String> userIds = [currentUserId, authorId];
+                    userIds.sort();
+                    final chatId = '${userIds.join('_')}_$docId';
 
-                  // Firestore에 채팅방 생성 (이미 존재하면 덮어쓰기 없음)
-                  await FirebaseFirestore.instance
-                      .collection('chats')
-                      .doc(chatId)
-                      .set({
-                    'postId': docId,
-                    'userIds': [currentUserId, authorId],
-                    'lastMessage': '',
-                    'timestamp': FieldValue.serverTimestamp(),
-                  });
+                    try {
+                      // 채팅방 생성 또는 업데이트
+                      await FirebaseFirestore.instance
+                          .collection('chats')
+                          .doc(chatId)
+                          .set({
+                        'userIds': userIds,
+                        'lastMessage': '',
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'postId': docId,
+                        'postTitle': title,
+                        'postType': 'market',
+                      }, SetOptions(merge: true));
 
-                  // 채팅 페이지로 이동
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatPage(
-                        chatId: chatId,
-                        currentUserId: currentUserId,
-                        otherUserId: authorId,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.chat),
-                label: const Text("채팅하기"),
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatPage(
+                              chatId: chatId,
+                              currentUserId: currentUserId,
+                              otherUserId: authorId,
+                              postTitle: title,
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('채팅방 생성 실패: $e')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.chat),
+                  label: const Text('채팅하기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                  ),
+                ),
               ),
           ],
         ),
       ),
     );
   }
+}
 
-  // 고유 chatId 생성
-  String _generateChatId(String docId, String userId1, String userId2) {
-    final ids = [docId, userId1, userId2];
-    ids.sort();
-    return ids.join('_');
+// 채팅 목록 페이지
+class ChatListPage extends StatelessWidget {
+  const ChatListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUserId == null) {
+      return const Center(child: Text('로그인이 필요합니다.'));
+    }
+
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('chats')
+            .where('userIds', arrayContains: currentUserId)
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('오류 발생: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final chats = snapshot.data!.docs;
+
+          if (chats.isEmpty) {
+            return const Center(child: Text('진행 중인 채팅이 없습니다.'));
+          }
+
+          return ListView.builder(
+            itemCount: chats.length,
+            itemBuilder: (context, index) {
+              final chat = chats[index].data() as Map<String, dynamic>;
+              final otherUserId = (chat['userIds'] as List)
+                  .firstWhere((id) => id != currentUserId);
+              final postTitle = chat['postTitle'] ?? '제목 없음';
+              final lastMessage = chat['lastMessage'] ?? '';
+              final timestamp = chat['timestamp'] as Timestamp?;
+              final formattedTime =
+                  timestamp != null ? _formatTimestamp(timestamp) : '';
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatPage(
+                          chatId: chats[index].id,
+                          currentUserId: currentUserId,
+                          otherUserId: otherUserId,
+                          postTitle: postTitle,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                postTitle,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              formattedTime,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                lastMessage.isEmpty
+                                    ? '대화를 시작해보세요!'
+                                    : lastMessage,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '상대방: $otherUserId',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey[400],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    final now = DateTime.now();
+    final messageTime = timestamp.toDate();
+    final difference = now.difference(messageTime);
+
+    if (difference.inMinutes < 1) {
+      return '방금 전';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}분 전';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}시간 전';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}일 전';
+    } else {
+      return '${messageTime.month}월 ${messageTime.day}일';
+    }
   }
 }
 
@@ -744,6 +955,7 @@ class EditPostPage extends StatelessWidget {
   final String currentContent;
 
   const EditPostPage({
+    super.key,
     required this.isTipsPage,
     required this.docId,
     required this.currentTitle,
@@ -796,16 +1008,19 @@ class EditPostPage extends StatelessWidget {
   }
 }
 
+// 채팅하는 화면
 class ChatPage extends StatefulWidget {
   final String chatId;
   final String currentUserId;
   final String otherUserId;
+  final String postTitle;
 
   const ChatPage({
     super.key,
     required this.chatId,
     required this.currentUserId,
     required this.otherUserId,
+    required this.postTitle,
   });
 
   @override
@@ -814,12 +1029,13 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('채팅 - ${widget.otherUserId}'),
+        title: Text(widget.postTitle),
       ),
       body: Column(
         children: [
@@ -832,39 +1048,82 @@ class _ChatPageState extends State<ChatPage> {
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print('Error: ${snapshot.error}');
+                  return Center(child: Text('오류가 발생했습니다: ${snapshot.error}'));
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('메시지가 없습니다.'));
-                }
-
-                final messages = snapshot.data!.docs;
+                final messages = snapshot.data?.docs ?? [];
 
                 return ListView.builder(
+                  controller: _scrollController,
                   reverse: true,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isMine = message['senderId'] == widget.currentUserId;
+                    final message =
+                        messages[index].data() as Map<String, dynamic>;
+                    final isMe = message['senderId'] == widget.currentUserId;
+                    final messageText = message['content'] as String? ?? '';
+                    final timestamp = message['timestamp'] as Timestamp?;
+                    final time = timestamp != null
+                        ? DateFormat('HH:mm').format(timestamp.toDate())
+                        : '';
 
-                    return Align(
-                      alignment:
-                          isMine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color:
-                              isMine ? Colors.blueAccent : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          message['content'],
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 4.0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: isMe
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (!isMe) ...[
+                            const CircleAvatar(
+                              radius: 16,
+                              child: Icon(Icons.person, size: 20),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Column(
+                            crossAxisAlignment: isMe
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.7,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isMe
+                                      ? Colors.blue[100]
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(messageText),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                time,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -872,8 +1131,18 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
-          Padding(
+          Container(
             padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -882,12 +1151,21 @@ class _ChatPageState extends State<ChatPage> {
                     decoration: const InputDecoration(
                       hintText: '메시지를 입력하세요',
                       border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
+                    maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: _sendMessage,
+                  color: Theme.of(context).primaryColor,
                 ),
               ],
             ),
@@ -897,30 +1175,49 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
+  Future<void> _sendMessage() async {
+    final messageText = _messageController.text.trim();
+    if (messageText.isEmpty) return;
 
-    final message = {
-      'senderId': widget.currentUserId,
-      'content': _messageController.text.trim(),
-      'timestamp': FieldValue.serverTimestamp(),
-    };
+    try {
+      // 메시지 전송 전에 컨트롤러 초기화 (더 빠른 UI 응답)
+      _messageController.clear();
 
-    await FirebaseFirestore.instance
-        .collection('chats')
-        .doc(widget.chatId)
-        .collection('messages')
-        .add(message);
+      final chatRef =
+          FirebaseFirestore.instance.collection('chats').doc(widget.chatId);
 
-    // 채팅방 메타데이터 업데이트
-    await FirebaseFirestore.instance
-        .collection('chats')
-        .doc(widget.chatId)
-        .update({
-      'lastMessage': message['content'],
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+      // 트랜잭션으로 메시지 전송과 채팅방 업데이트를 동시에 처리
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // 메시지 추가
+        final messageRef = chatRef.collection('messages').doc();
+        transaction.set(messageRef, {
+          'content': messageText,
+          'senderId': widget.currentUserId,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
 
-    _messageController.clear();
+        // 채팅방 정보 업데이트
+        transaction.update(chatRef, {
+          'lastMessage': messageText,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      });
+
+      print('메시지 전송 성공: $messageText'); // 디버깅용
+    } catch (e) {
+      print('메시지 전송 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('메시지 전송 실패: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 }
