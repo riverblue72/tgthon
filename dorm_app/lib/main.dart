@@ -50,18 +50,8 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: Colors.white, // 배경색을 흰색으로 설정
         appBarTheme: AppBarTheme(
-          backgroundColor: const Color.fromARGB(255, 199, 54, 28),
-        ),
-        // 강조색을 검은색으로 설정
-        colorScheme: ColorScheme.light(
-          primary: const Color.fromARGB(255, 3, 104, 30), // 주요 색상 변경
-          secondary: Colors.black, // 강조 색상 (검은색으로 변경)
-          surface: Colors.white,
-          error: Colors.red,
-          onPrimary: Colors.white,
-          onSecondary: Colors.white,
-          onSurface: Colors.black,
-          onError: Colors.white,
+          backgroundColor: const Color.fromARGB(255, 241, 100, 90)
+              .withOpacity(0.3), // 연한 빨강색으로 설정
         ),
       ),
       home: const WelcomeScreen(),
@@ -96,17 +86,20 @@ class WelcomeScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 3, 104, 30),
-                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.green,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // 경계선 둥글기 설정
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: Colors.black, width: 2),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 30, vertical: 15), // 패딩 설정
                 ),
                 child: const Text(
                   '인증하기',
-                  style: TextStyle(fontSize: 20, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
               ),
             ),
@@ -165,10 +158,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     if (isSimulator) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'QR 코드 입력',
-            style: TextStyle(color: Colors.white), // 텍스트 색상을 흰색으로 설정
-          ),
+          title: const Text('QR 코드 입력'),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -207,10 +197,7 @@ class _QRViewExampleState extends State<QRViewExample> {
     // 실제 QR 스캐너 UI
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'QR Code Scanner',
-          style: TextStyle(color: Colors.white), // 텍스트 색상을 흰색으로 설정
-        ),
+        title: const Text('QR Code Scanner'),
       ),
       body: QRView(
         key: qrKey,
@@ -269,16 +256,16 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: const Text(
-        '회원가입',
-        style: const TextStyle(color: Colors.white),
-      )),
+      appBar: AppBar(title: const Text('회원가입')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              '회원가입',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 20),
             TextField(
               controller: nicknameController,
@@ -353,11 +340,10 @@ class _MainPageState extends State<MainPage> {
       appBar: AppBar(
         title: Text(
           _selectedIndex == 0
-              ? '중고거래 게시판'
+              ? '중고거래 게판'
               : _selectedIndex == 1
                   ? '팁 게시판'
                   : '채팅', // 채팅 페이지 제목
-          style: const TextStyle(color: Colors.white), // 텍스트 색상을 흰색으로 설정
         ),
       ),
       body: _pages[_selectedIndex], // 선택된 페이지 렌더링
@@ -400,7 +386,7 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
             currentIndex: _selectedIndex,
-            selectedItemColor: const Color.fromARGB(255, 199, 54, 28), // 선택된 색상
+            selectedItemColor: Color.fromARGB(255, 241, 100, 90), // 선택된 색상
             unselectedItemColor: Colors.black, // 선택되지 않은 색상
             backgroundColor: Colors.white, // 하단바 배경색을 흰색으로 설정
             onTap: _onItemTapped,
@@ -464,11 +450,7 @@ class MarketPage extends StatelessWidget {
                       );
                     },
                   ),
-                  Divider(
-                    color: Colors.grey.withOpacity(0.3), // 연한 검정색으로 설정
-                    height: 1, // 두께 설정
-                    thickness: 1, // 두께 설정
-                  ), // 항목 사이에 분리선 추가
+                  const Divider(), // 항목 사이에 분리선 추가
                 ],
               );
             },
@@ -560,11 +542,7 @@ class TipsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  Divider(
-                    color: Colors.grey.withOpacity(0.3), // 연한 검정색으로 설정
-                    height: 1, // 두께 설정
-                    thickness: 1, // 두께 설정
-                  ),
+                  const Divider(), // 항목 사이에 분리선 추가
                 ],
               );
             },
@@ -612,158 +590,124 @@ class DetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: Text(title),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        // Scrollable 위젯으로 변경
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isPinned)
+              const Text(
+                '📌 고정글',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              content,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            if (currentUserId == authorId)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (isPinned)
-                    const Text(
-                      '📌 고정글',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red),
-                    ),
-                  const SizedBox(height: 8),
-                  Text(
-                    content,
-                    style: const TextStyle(fontSize: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditPostPage(
+                            isTipsPage: isTipsPage,
+                            docId: docId,
+                            currentTitle: title,
+                            currentContent: content,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text("수정"),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await FirebaseFirestore.instance
+                          .collection(isTipsPage ? 'tips' : 'market')
+                          .doc(docId)
+                          .delete();
+                      Navigator.pop(context);
+                    },
+                    child: const Text("삭제"),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   ),
                 ],
               ),
-            ),
-          ),
-          // 버튼 영역
-          Container(
-            padding: const EdgeInsets.only(
-              left: 16.0,
-              right: 16.0,
-              bottom: 40.0, // bottom 여백 증가
-              top: 16.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end, // 모든 버튼을 오른쪽으로 정렬
-              children: [
-                if (currentUserId == authorId)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditPostPage(
-                                isTipsPage: isTipsPage,
-                                docId: docId,
-                                currentTitle: title,
-                                currentContent: content,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text("수정"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color.fromARGB(255, 3, 104, 30), // 초록색 배경색
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection(isTipsPage ? 'tips' : 'market')
-                              .doc(docId)
-                              .delete();
-                          Navigator.pop(context);
-                        },
-                        child: const Text("삭제"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color.fromARGB(255, 199, 54, 28),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                if (!isTipsPage &&
-                    currentUserId != null &&
-                    currentUserId != authorId)
-                  ElevatedButton.icon(
-                    // Align 제거하고 직접 배치
-                    onPressed: () async {
-                      // 두 사용자 ID를 정렬하여 일관된 채팅방 ID 생성
-                      List<String> userIds = [currentUserId, authorId];
-                      userIds.sort();
-                      final chatId = '${userIds.join('_')}_$docId';
 
-                      try {
-                        // 채팅방 생성 또는 업데이트
-                        await FirebaseFirestore.instance
-                            .collection('chats')
-                            .doc(chatId)
-                            .set({
-                          'userIds': userIds,
-                          'lastMessage': '',
-                          'timestamp': FieldValue.serverTimestamp(),
-                          'postId': docId,
-                          'postTitle': title,
-                          'postType': 'market',
-                        }, SetOptions(merge: true));
+            const SizedBox(height: 20),
+            // 중고거래 게시판에서만 채팅 버튼 표시
+            if (!isTipsPage &&
+                currentUserId != null &&
+                currentUserId != authorId)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    // 두 사용자 ID를 정렬하여 일관된 채팅방 ID 생성
+                    List<String> userIds = [currentUserId, authorId];
+                    userIds.sort();
+                    final chatId = '${userIds.join('_')}_$docId';
 
-                        if (context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatPage(
-                                chatId: chatId,
-                                currentUserId: currentUserId,
-                                otherUserId: authorId,
-                                postTitle: title,
-                              ),
+                    try {
+                      // 채팅방 생성 또는 업데이트
+                      await FirebaseFirestore.instance
+                          .collection('chats')
+                          .doc(chatId)
+                          .set({
+                        'userIds': userIds,
+                        'lastMessage': '',
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'postId': docId,
+                        'postTitle': title,
+                        'postType': 'market',
+                      }, SetOptions(merge: true));
+
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatPage(
+                              chatId: chatId,
+                              currentUserId: currentUserId,
+                              otherUserId: authorId,
+                              postTitle: title,
                             ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('채팅방 생성 실패: $e')),
-                          );
-                        }
+                          ),
+                        );
                       }
-                    },
-                    icon: const Icon(Icons.chat),
-                    label: const Text('채팅하기'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 3, 104, 30),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                    ),
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('채팅방 생성 실패: $e')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.chat),
+                  label: const Text('채팅하기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                   ),
-              ],
-            ),
-          ),
-        ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -977,13 +921,10 @@ class _WritePostPageState extends State<WritePostPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 3, 104, 30),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12), // 경계선 둥글기 설정
-                ),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 30, vertical: 15), // 패딩 설정
+                backgroundColor: Colors.green, // 버튼 배경색
+                foregroundColor: Colors.white, // 버튼 텍스트 색
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               onPressed: () async {
                 await FirebaseFirestore.instance
@@ -1094,10 +1035,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.postTitle,
-          style: const TextStyle(color: Colors.white),
-        ),
+        title: Text(widget.postTitle),
       ),
       body: Column(
         children: [
@@ -1164,14 +1102,14 @@ class _ChatPageState extends State<ChatPage> {
                                       MediaQuery.of(context).size.width * 0.7,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isMe
-                                      ? const Color.fromARGB(
-                                          150, 3, 104, 30) // 내가 보낸 메시지 색상
-                                      : Colors.grey[300], // 남이 보낸 메시지 색상
-                                  borderRadius: BorderRadius.circular(
-                                      12), // 모서리 둥글기를 0으로 설정하여 사각형으로 유지
+                                      ? Colors.blue[100]
+                                      : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(messageText),
                               ),
@@ -1194,8 +1132,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           Container(
-            padding:
-                const EdgeInsets.only(bottom: 34.0, left: 16.0, right: 16.0),
+            padding: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
